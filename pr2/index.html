@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html ng-app>
+
+<head>
+    <title>Student Form</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"></script>
+    <style>
+        .preview {
+            border: 1px solid black;
+            padding: 10px;
+            margin-top: 20px;
+            width: 300px;
+        }
+
+        .main {
+            display: flex;
+            width: 50%;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h3>Student Form</h3>
+    <div class="main">
+        <form>
+            Enrollment No: <input type="number" ng-model="enrol"><br><br>
+            Name : <input type="text" ng-model="name"><br><br>
+
+            Semester: <select name="Semester">
+                <option value="1"> 1 </option>
+                <option value="2"> 2 </option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+            </select>
+            <br><br>
+            Branch: <input type="text" ng-model="branch"><br><br>
+            Mobile: <input type="number" ng-model="mobile"><br><br>
+            Email: <input type="text" ng-model="email"><br><br>
+            Address: <input type="text" ng-model="address"><br><br>
+        </form>
+        <div id="preview">
+            <h3>Student Details:</h3>
+            <p>Enrolment No: {{ enrol }}</p>
+            <p>Name: {{ name }}</p>
+            <p>Semester: {{ sem }}</p>
+            <p>Branch: {{ branch }}</p>
+            <p>Mobile: {{ mobile }}</p>
+            <p>Email: {{ email }}</p>
+            <p>Address: {{ address }}</p>
+        </div>
+    </div>
+</body>
+
+</html>

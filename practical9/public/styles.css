@@ -1,0 +1,4 @@
+body { font-family: Arial, Helvetica, sans-serif; padding: 20px; }
+.buttons { margin-top: 10px; margin-bottom: 10px; }
+button { margin-right: 8px; }
+#output { white-space: pre-wrap; border: 1px solid #ddd; padding: 10px; min-height: 120px; }

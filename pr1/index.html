@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h3>AJAX Text File Read</h3>
+
+<button onclick="loadText()">Refresh</button>
+
+<p id="text">Text will appear here...</p>
+
+<script>
+function loadText() {
+    var x = new XMLHttpRequest();
+    x.open("GET", "data.txt", true);
+    x.onload = function () {
+        document.getElementById("text").innerText = x.responseText;
+    };
+    x.send();
+}
+
+loadText();
+</script>
+
+</body>
+</html>
