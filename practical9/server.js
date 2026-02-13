@@ -4,6 +4,7 @@ const path = require("path");
 const zlib = require("zlib");
 const multer = require("multer");
 
+
 const app = express();
 const PORT = 3000;
 
@@ -134,6 +135,7 @@ app.post("/decompress", upload.single("file"), (req, res) => {
       output: path.basename(outputFile),
     });
   });
+
 
   readStream.pipe(gunzip).pipe(writeStream);
 });
