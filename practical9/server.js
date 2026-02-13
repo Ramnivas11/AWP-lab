@@ -1,82 +1,143 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const zlib = require('zlib');
-const cors = require('cors');
+﻿const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const zlib = require("zlib");
+const multer = require("multer");
 
 const app = express();
-app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
+const PORT = 3000;
 
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+const uploadDir = path.join(__dirname, "uploads");
+const outputDir = path.join(__dirname, "output");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
 });
+
 const upload = multer({ storage });
 
-app.post('/read-sync', upload.single('file'), (req, res) => {
-  const file = req.file;
-  if (!file) return res.status(400).json({ error: 'No file uploaded' });
-  const filePath = file.path;
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
+
+function ensureFile(req, res) {
+  if (!req.file) {
+    res.status(400).json({ error: "No file uploaded." });
+    return null;
+  }
+  return req.file;
+}
+
+app.post("/read-sync", upload.single("file"), (req, res) => {
+  const file = ensureFile(req, res);
+  if (!file) return;
+
   try {
-    const text = fs.readFileSync(filePath, 'utf8');
-    res.json({ type: 'text', filename: file.originalname, content: text });
-  } catch (e) {
-    try {
-      const buf = fs.readFileSync(filePath);
-      res.json({ type: 'binary', filename: file.originalname, content: buf.toString('base64') });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+    const data = fs.readFileSync(file.path);
+    res.json({
+      message: "File read synchronously.",
+      filename: file.originalname,
+      size: data.length,
+      content: data.toString("utf8"),
+    });
+  } catch (error) {
+    res.status(500).json({ error: `Sync read failed: ${error.message}` });
   }
 });
 
-app.post('/read-async', upload.single('file'), (req, res) => {
-  const file = req.file;
-  if (!file) return res.status(400).json({ error: 'No file uploaded' });
-  const filePath = file.path;
-  fs.readFile(filePath, 'utf8', (err, data) => {
-    if (!err) return res.json({ type: 'text', filename: file.originalname, content: data });
-    fs.readFile(filePath, (err2, buf) => {
-      if (err2) return res.status(500).json({ error: err2.message });
-      res.json({ type: 'binary', filename: file.originalname, content: buf.toString('base64') });
+app.post("/read-async", upload.single("file"), (req, res) => {
+  const file = ensureFile(req, res);
+  if (!file) return;
+
+  fs.readFile(file.path, (error, data) => {
+    if (error) {
+      res.status(500).json({ error: `Async read failed: ${error.message}` });
+      return;
+    }
+
+    res.json({
+      message: "File read asynchronously.",
+      filename: file.originalname,
+      size: data.length,
+      content: data.toString("utf8"),
     });
   });
 });
 
-app.post('/compress', upload.single('file'), (req, res) => {
-  const file = req.file;
-  if (!file) return res.status(400).json({ error: 'No file uploaded' });
-  const source = file.path;
-  const target = source + '.gz';
-  const inp = fs.createReadStream(source);
-  const out = fs.createWriteStream(target);
+app.post("/compress", upload.single("file"), (req, res) => {
+  const file = ensureFile(req, res);
+  if (!file) return;
+
+  const outputFile = path.join(outputDir, `${path.basename(file.originalname)}.gz`);
+  const readStream = fs.createReadStream(file.path);
+  const writeStream = fs.createWriteStream(outputFile);
   const gzip = zlib.createGzip();
-  inp.pipe(gzip).pipe(out).on('finish', () => {
-    res.download(target, path.basename(target), err => {
-      if (err) console.error(err);
+
+  readStream.on("error", (error) => {
+    res.status(500).json({ error: `Read stream failed: ${error.message}` });
+  });
+
+  writeStream.on("error", (error) => {
+    res.status(500).json({ error: `Write stream failed: ${error.message}` });
+  });
+
+  writeStream.on("finish", () => {
+    res.json({
+      message: "File compressed successfully.",
+      input: file.originalname,
+      output: path.basename(outputFile),
     });
-  }).on('error', err => res.status(500).json({ error: err.message }));
+  });
+
+  readStream.pipe(gzip).pipe(writeStream);
 });
 
-app.post('/decompress', upload.single('file'), (req, res) => {
-  const file = req.file;
-  if (!file) return res.status(400).json({ error: 'No file uploaded' });
-  const source = file.path;
-  const target = source.replace(/\.gz$/, '') + '.decompressed';
-  const inp = fs.createReadStream(source);
-  const out = fs.createWriteStream(target);
+app.post("/decompress", upload.single("file"), (req, res) => {
+  const file = ensureFile(req, res);
+  if (!file) return;
+
+  const inputName = path.basename(file.originalname);
+  const outputName = inputName.endsWith(".gz")
+    ? inputName.replace(/\.gz$/, "")
+    : `${inputName}.out`;
+  const outputFile = path.join(outputDir, outputName);
+
+  const readStream = fs.createReadStream(file.path);
+  const writeStream = fs.createWriteStream(outputFile);
   const gunzip = zlib.createGunzip();
-  inp.pipe(gunzip).pipe(out).on('finish', () => {
-    res.download(target, path.basename(target), err => {
-      if (err) console.error(err);
+
+  readStream.on("error", (error) => {
+    res.status(500).json({ error: `Read stream failed: ${error.message}` });
+  });
+
+  gunzip.on("error", (error) => {
+    res.status(500).json({ error: `Decompression failed: ${error.message}` });
+  });
+
+  writeStream.on("error", (error) => {
+    res.status(500).json({ error: `Write stream failed: ${error.message}` });
+  });
+
+  writeStream.on("finish", () => {
+    res.json({
+      message: "File decompressed successfully.",
+      input: file.originalname,
+      output: path.basename(outputFile),
     });
-  }).on('error', err => res.status(500).json({ error: err.message }));
+  });
+
+  readStream.pipe(gunzip).pipe(writeStream);
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});

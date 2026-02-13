@@ -1,23 +1,160 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Node File Operations</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <h1>File Operations (Node.js)</h1>
-  <input type="file" id="fileInput">
-  <div class="buttons">
-    <button id="btnSync">Read File Synchronously</button>
-    <button id="btnAsync">Read File Asynchronously</button>
-    <button id="btnCompress">Compress File</button>
-    <button id="btnDecompress">Decompress File</button>
-  </div>
-  <h3>Output</h3>
-  <div id="output"></div>
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Node File Operations</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --card: #ffffff;
+        --primary: #0f4c81;
+        --primary-dark: #0a3760;
+        --text: #1b2430;
+        --muted: #54657a;
+        --border: #d9e2ec;
+      }
 
-  <script src="main.js"></script>
-</body>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(140deg, #eef3f9 0%, #f8fbff 100%);
+        color: var(--text);
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .card {
+        width: min(760px, 100%);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+        box-shadow: 0 10px 24px rgba(15, 76, 129, 0.08);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        color: var(--primary);
+      }
+
+      p {
+        margin: 0 0 18px;
+        color: var(--muted);
+      }
+
+      input[type="file"] {
+        width: 100%;
+        margin-bottom: 16px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 12px 14px;
+        background: var(--primary);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      button:hover {
+        background: var(--primary-dark);
+      }
+
+      pre {
+        margin-top: 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        background: #f9fbfe;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 320px;
+        overflow: auto;
+      }
+
+      @media (max-width: 640px) {
+        .actions {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>File Operations using Node.js</h1>
+      <p>Select a file, then choose any operation.</p>
+
+      <input id="fileInput" type="file" />
+
+      <div class="actions">
+        <button data-endpoint="/read-sync">Read File Synchronously</button>
+        <button data-endpoint="/read-async">Read File Asynchronously</button>
+        <button data-endpoint="/compress">Compress File</button>
+        <button data-endpoint="/decompress">Decompress File</button>
+      </div>
+
+      <pre id="output">Result will appear here.</pre>
+    </main>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const output = document.getElementById("output");
+      const buttons = document.querySelectorAll("button[data-endpoint]");
+
+      async function runOperation(endpoint) {
+        const file = fileInput.files[0];
+
+        if (!file) {
+          output.textContent = "Please choose a file first.";
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        output.textContent = "Processing...";
+
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            output.textContent = `Error: ${result.error || "Unknown error"}`;
+            return;
+          }
+
+          output.textContent = JSON.stringify(result, null, 2);
+        } catch (error) {
+          output.textContent = `Request failed: ${error.message}`;
+        }
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => runOperation(button.dataset.endpoint));
+      });
+    </script>
+  </body>
 </html>
